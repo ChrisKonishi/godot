@@ -244,6 +244,153 @@ void CodeEdit::_notification(int p_what) {
 					yofs += line_spacing;
 				}
 			}
+
+			brace_open_match_line = -1;
+			brace_open_match_column = -1;
+			brace_open_matching = false;
+			brace_open_mismatch = false;
+			brace_close_match_line = -1;
+			brace_close_match_column = -1;
+			brace_close_matching = false;
+			brace_close_mismatch = false;
+			if (highlight_matching_braces_enabled && get_caret_line() >= 0 && get_caret_line() < get_line_count() && get_caret_column() >= 0) {
+				if (get_caret_column() < get_line(get_caret_line()).length()) {
+					// Check for open.
+					char32_t c = get_line(get_caret_line())[get_caret_column()];
+					char32_t closec = 0;
+
+					if (is_in_comment(get_caret_line(), get_caret_column()) == -1) {
+						if (c == '[') {
+							closec = ']';
+						} else if (c == '{') {
+							closec = '}';
+						} else if (c == '(') {
+							closec = ')';
+						}
+					}
+
+					if (closec != 0) {
+						int stack = 1;
+
+						for (int i = get_caret_line(); i < get_line_count(); i++) {
+							int from = i == get_caret_line() ? get_caret_column() + 1 : 0;
+							for (int j = from; j < get_line(i).length(); j++) {
+								char32_t cc = get_line(i)[j];
+								// Ignore any brackets inside a string.
+								if (cc == '"' || cc == '\'') {
+									char32_t quotation = cc;
+									do {
+										j++;
+										if (!(j < get_line(i).length())) {
+											break;
+										}
+										cc = get_line(i)[j];
+										// Skip over escaped quotation marks inside strings.
+										if (cc == '\\') {
+											bool escaped = true;
+											while (j + 1 < get_line(i).length() && get_line(i)[j + 1] == '\\') {
+												escaped = !escaped;
+												j++;
+											}
+											if (escaped) {
+												j++;
+												continue;
+											}
+										}
+									} while (cc != quotation);
+								} else if (cc == c && is_in_comment(i, j) == -1) {
+									stack++;
+								} else if (cc == closec && is_in_comment(i, j) == -1) {
+									stack--;
+								}
+
+								if (stack == 0) {
+									brace_open_match_line = i;
+									brace_open_match_column = j;
+									brace_open_matching = true;
+
+									break;
+								}
+							}
+							if (brace_open_match_line != -1) {
+								break;
+							}
+						}
+
+						if (!brace_open_matching) {
+							brace_open_mismatch = true;
+						}
+					}
+				}
+
+				if (get_caret_column() > 0) {
+					char32_t c = get_line(get_caret_line())[get_caret_column() - 1];
+					char32_t closec = 0;
+
+					if (is_in_comment(get_caret_line(), get_caret_column()) == -1) {
+						if (c == ']') {
+							closec = '[';
+						} else if (c == '}') {
+							closec = '{';
+						} else if (c == ')') {
+							closec = '(';
+						}
+					}
+
+					if (closec != 0) {
+						int stack = 1;
+
+						for (int i = get_caret_line(); i >= 0; i--) {
+							int from = i == get_caret_line() ? get_caret_column() - 2 : get_line(i).length() - 1;
+							for (int j = from; j >= 0; j--) {
+								char32_t cc = get_line(i)[j];
+								// Ignore any brackets inside a string.
+								if (cc == '"' || cc == '\'') {
+									char32_t quotation = cc;
+									do {
+										j--;
+										if (!(j >= 0)) {
+											break;
+										}
+										cc = get_line(i)[j];
+										// Skip over escaped quotation marks inside strings.
+										if (cc == quotation) {
+											bool escaped = false;
+											while (j - 1 >= 0 && get_line(i)[j - 1] == '\\') {
+												escaped = !escaped;
+												j--;
+											}
+											if (escaped) {
+												cc = '\\';
+												continue;
+											}
+										}
+									} while (cc != quotation);
+								} else if (cc == c && is_in_comment(i, j) == -1) {
+									stack++;
+								} else if (cc == closec && is_in_comment(i, j) == -1) {
+									stack--;
+								}
+
+								if (stack == 0) {
+									brace_close_match_line = i;
+									brace_close_match_column = j;
+									brace_close_matching = true;
+
+									break;
+								}
+							}
+							if (brace_close_match_line != -1) {
+								break;
+							}
+						}
+
+						if (!brace_close_matching) {
+							brace_close_mismatch = true;
+						}
+					}
+				}
+			}
 		} break;
 	}
 }

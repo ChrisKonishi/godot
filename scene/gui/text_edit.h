@@ -572,6 +572,15 @@ protected:
 	// brace matching
 	bool highlight_matching_braces_enabled = false;
 	Color brace_mismatch_color;
+	int brace_open_match_line = -1;
+	int brace_open_match_column = -1;
+	bool brace_open_matching = false;
+	bool brace_open_mismatch = false;
+	int brace_close_match_line = -1;
+	int brace_close_match_column = -1;
+	bool brace_close_matching = false;
+	bool brace_close_mismatch = false;
+
 
 	// Line hiding.
 	Color code_folding_color = Color(1, 1, 1);
